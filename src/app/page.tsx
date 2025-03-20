@@ -8,7 +8,7 @@ import { Quiz } from "@/ui/components/Quiz";
 import { SubjectSelect } from "@/ui/components/SubjectSelect";
 
 export default function Home() {
-  const [isAuthChecked, setIsAuthChecked] = useState(false);
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [displayView, setDisplayView] = useState<"intro" | "subjectSelect" | "countdown" | "quiz">("intro");
   const [selectedSubject, setSelectedSubject] = useState<string>("");
   const [selectedLevel, setSelectedLevel] = useState<string>("");
@@ -17,47 +17,48 @@ export default function Home() {
   useEffect(() => {
     if (typeof window !== "undefined") {
       const token = localStorage.getItem("token");
-      console.log("🔹 Token in localStorage:", token);
+      console.log("🔹 Checking authentication, Token:", token);
 
       if (!token) {
-        console.warn("🔸 No token found! Redirecting to login in 2 seconds...");
-        setTimeout(() => {
-          router.push("/login");
-        }, 2000); // 2-second delay before redirect
+        console.warn("🔸 No token found! Redirecting to login...");
+        router.replace("/login"); // ✅ Redirect to login
       } else {
-        setIsAuthChecked(true);
+        setIsAuthenticated(true);
       }
     }
   }, []);
 
-  if (!isAuthChecked) {
-    return <div>Loading...</div>; // Prevents redirect before authentication check
+  if (!isAuthenticated) {
+    return null; // ✅ Prevent flashing home page before redirect
   }
+
+  const handleLogout = () => {
+    localStorage.removeItem("token");
+    localStorage.removeItem("username");
+    router.push("/login"); // ✅ Redirect to login after logout
+  };
 
   const onStartQuiz = (subject: string, level: string) => {
     setSelectedSubject(subject);
     setSelectedLevel(level);
-    setDisplayView("countdown"); // Transition to countdown before quiz starts
+    setDisplayView("countdown");
   };
 
   return (
     <main className="h-viewport flex flex-col w-full overflow-hidden">
+      {/* 🔹 Logout Button at the top */}
+      <div className="flex justify-between items-center p-4">
+        <h1 className="text-lg font-bold">Welcome to the Quiz App</h1>
+        <button onClick={handleLogout} className="bg-red-500 text-white px-4 py-2 rounded">
+          Logout
+        </button>
+      </div>
+
       <AnimatePresence mode="wait">
-        {displayView === "intro" && (
-          <Intro onGetStartedClick={() => setDisplayView("subjectSelect")} />
-        )}
-
-        {displayView === "subjectSelect" && (
-          <SubjectSelect onStartQuiz={onStartQuiz} />
-        )}
-
-        {displayView === "countdown" && (
-          <Countdown onGoClick={() => setDisplayView("quiz")} />
-        )}
-
-        {displayView === "quiz" && (
-          <Quiz selectedSubject={selectedSubject} selectedLevel={selectedLevel} />
-        )}
+        {displayView === "intro" && <Intro onGetStartedClick={() => setDisplayView("subjectSelect")} />}
+        {displayView === "subjectSelect" && <SubjectSelect onStartQuiz={onStartQuiz} />}
+        {displayView === "countdown" && <Countdown onGoClick={() => setDisplayView("quiz")} />}
+        {displayView === "quiz" && <Quiz selectedSubject={selectedSubject} selectedLevel={selectedLevel} />}
       </AnimatePresence>
     </main>
   );

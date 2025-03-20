@@ -26,4 +26,3 @@ export const fetchQuizQuestions = async (topic: string, difficulty: string) => {
     return [];
   }
 };
-
