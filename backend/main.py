@@ -10,21 +10,33 @@ from motor.motor_asyncio import AsyncIOMotorClient
 # ✅ Load environment variables
 load_dotenv()
 
-# ✅ Get MONGO_URI from .env
+# ✅ Debugging logs for environment variables
 MONGO_URI = os.getenv("MONGO_URI")
+JWT_SECRET = os.getenv("JWT_SECRET")
+GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
+
 if not MONGO_URI:
     raise ValueError("⚠ MONGO_URI is missing in the .env file!")
 
-# ✅ Connect to MongoDB
-client = AsyncIOMotorClient(MONGO_URI)
-
 # ✅ Extract the database name from URI
-DB_NAME = MONGO_URI.split("/")[-1].split("?")[0]
+try:
+    DB_NAME = MONGO_URI.rsplit("/", 1)[-1].split("?")[0]  # Fix extraction issue
+    if not DB_NAME:
+        raise ValueError("⚠ No database name found in MONGO_URI!")
+except Exception as e:
+    raise ValueError(f"⚠ Error extracting DB_NAME: {str(e)}")
 
-if not DB_NAME:
-    raise ValueError("⚠ No database name found in MONGO_URI!")
+# ✅ Debugging log
+print(f"🔍 MONGO_URI: {MONGO_URI}")
+print(f"🔍 Extracted DB_NAME: {DB_NAME}")
 
-db = client[DB_NAME]  # ✅ Correctly selects the database
+# ✅ Connect to MongoDB
+try:
+    client = AsyncIOMotorClient(MONGO_URI)
+    db = client[DB_NAME]
+    print(f"✅ MongoDB Connected Successfully! Using Database: {DB_NAME}")
+except Exception as e:
+    raise ValueError(f"❌ Failed to connect to MongoDB: {str(e)}")
 
 # ✅ Initialize FastAPI app
 app = FastAPI()
@@ -49,8 +61,11 @@ app.add_middleware(
 async def log_requests(request: Request, call_next):
     print(f"🔍 Incoming Request: {request.method} {request.url}")
     if request.method in ["POST", "PUT"]:
-        body = await request.json()
-        print(f"📥 Request Payload: {body}")
+        try:
+            body = await request.json()
+            print(f"📥 Request Payload: {body}")
+        except Exception:
+            print("⚠ Unable to read request body.")
 
     response = await call_next(request)
     print(f"📤 Response Status: {response.status_code}")
@@ -66,8 +81,6 @@ async def root():
 async def global_exception_handler(request: Request, exc: Exception):
     print(f"❌ Error: {exc}")
     return {"error": "Internal Server Error", "details": str(exc)}
-
-print(f"✅ MongoDB Connected Successfully! Using Database: {DB_NAME}")
 
 if __name__ == "__main__":
     import uvicorn

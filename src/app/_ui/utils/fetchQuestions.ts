@@ -1,28 +1,32 @@
-import axios from "axios" ;
+import axios from "axios";
+
 export interface QuizQuestion {
   question: string;
   options: string[];
   correctAnswer: string;
 }
 
-export const fetchQuizQuestions = async (topic: string, difficulty: string) => {
+export const fetchQuizQuestions = async (subject: string, topic: string, difficulty: string) => {
   try {
-    const response = await axios.post("http://localhost:8000/api/quiz/generate", { topic, difficulty , numQuestions:15 });
+    console.log(`🔹 Fetching Quiz Questions: Subject=${subject}, Topic=${topic}, Difficulty=${difficulty}`);
 
-    console.log("API Response:", response.data); // Debugging log
+    const response = await axios.post("http://localhost:8000/api/quiz/generate", {
+      subject,  // ✅ Ensure correct API field
+      topic, 
+      difficulty, 
+      numQuestions: 15,
+    });
 
-    if (!response.data) {
-      throw new Error("API returned no data");
-    }
+    console.log("✅ API Response:", response.data); // Debugging log
 
-    if (!Array.isArray(response.data)) {
-      console.warn("Expected an array, converting to array:", response.data);
-      return [response.data];  // Convert single object to array
+    if (!response.data || !Array.isArray(response.data)) {
+      console.warn("⚠ Unexpected API response format, converting to array:", response.data);
+      return [response.data]; // Convert to array if needed
     }
 
     return response.data;
-  } catch (error) {
-    console.error("Error fetching quiz questions:", error);
+  } catch (error: any) {
+    console.error("❌ Error fetching quiz questions:", error.response?.data || error.message);
     return [];
   }
 };

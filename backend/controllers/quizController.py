@@ -15,6 +15,7 @@ GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
 GEMINI_API_URL = "https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-pro:generateContent"
 
 class QuizRequest(BaseModel):
+    subject: str
     topic: str
     difficulty: str
 
@@ -27,7 +28,7 @@ async def generate_quiz(request: QuizRequest):
         raise HTTPException(status_code=500, detail="Gemini API key is missing.")
 
     prompt = f"""
-    Generate 5 multiple-choice questions about {request.topic} at {request.difficulty} difficulty.
+    Generate 15 multiple-choice questions on {request.topic} ({request.subject}) at {request.difficulty} difficulty.
     Format the response as JSON:
     [
         {{
@@ -40,7 +41,7 @@ async def generate_quiz(request: QuizRequest):
     """
 
     try:
-        async with httpx.AsyncClient(timeout=10.0) as client:
+        async with httpx.AsyncClient(timeout=15.0) as client:
             response = await client.post(
                 GEMINI_API_URL,
                 json={"contents": [{"parts": [{"text": prompt}]}]},

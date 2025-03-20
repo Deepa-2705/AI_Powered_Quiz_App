@@ -1,6 +1,6 @@
 import os
 import bcrypt
-import jwt
+import jwt as pyjwt  # ✅ Use PyJWT instead of built-in jwt
 import datetime
 from fastapi import APIRouter, HTTPException, Depends
 from motor.motor_asyncio import AsyncIOMotorClient
@@ -19,7 +19,7 @@ if not JWT_SECRET:
 
 # ✅ Initialize MongoDB Connection
 client = AsyncIOMotorClient(MONGO_URI)
-db_name = "quiz_app"  # Specify the database name explicitly
+db_name = "quiz_app"  # ✅ Use explicit database name
 db = client[db_name]
 users_collection = db["users"]
 
@@ -28,8 +28,8 @@ router = APIRouter()
 # ✅ User Schema for Registration
 class UserRegister(BaseModel):
     username: str
-    email: EmailStr  # ✅ Enforces valid email format
-    password: constr(min_length=6)  # ✅ Requires at least 6 characters
+    email: EmailStr  # ✅ Validate email format
+    password: constr(min_length=6)  # ✅ Require at least 6 characters
 
 # ✅ User Schema for Login
 class UserLogin(BaseModel):
@@ -47,15 +47,13 @@ def verify_password(password: str, hashed_password: str) -> bool:
 def create_jwt_token(data: dict):
     expiration = datetime.datetime.utcnow() + datetime.timedelta(hours=24)
     data.update({"exp": expiration})
-    return jwt.encode(data, JWT_SECRET, algorithm="HS256")
+    return pyjwt.encode(data, JWT_SECRET, algorithm="HS256")
 
 # 📝 **API: Register a New User**
 @router.post("/register")
 async def register_user(user: UserRegister):
     try:
-        # ✅ Ensure all fields are provided
-        if not user.username or not user.email or not user.password:
-            raise HTTPException(status_code=400, detail="All fields are required")
+        print(f"🔹 Registering user: {user.email}")
 
         # ✅ Check if user already exists
         existing_user = await users_collection.find_one({"email": user.email})
@@ -70,33 +68,43 @@ async def register_user(user: UserRegister):
             "password": hashed_password,
         }
         result = await users_collection.insert_one(new_user)
-        
+
         if not result.inserted_id:
             raise HTTPException(status_code=500, detail="User registration failed")
 
+        print("✅ User registered successfully!")
         return {"message": "🎉 User registered successfully! You can now log in."}
-    
+
     except Exception as e:
+        print(f"❌ Error during registration: {e}")
         raise HTTPException(status_code=500, detail=f"Error registering user: {str(e)}")
 
 # 🔑 **API: Login User & Return JWT Token**
 @router.post("/login")
 async def login_user(user: UserLogin):
     try:
-        # ✅ Ensure fields are provided
-        if not user.email or not user.password:
-            raise HTTPException(status_code=400, detail="Email and password are required")
+        print(f"🔹 Logging in user: {user.email}")
 
         user_record = await users_collection.find_one({"email": user.email})
 
-        # ✅ Check if user exists & password is correct
-        if not user_record or not verify_password(user.password, user_record["password"]):
+        # ✅ Debugging: Check if user exists in the database
+        if not user_record:
+            print("❌ User not found in database")
+            raise HTTPException(status_code=401, detail="Invalid email or password")
+
+        print("✅ User found in database:", user_record)
+
+        # ✅ Check if the password is correct
+        if not verify_password(user.password, user_record["password"]):
+            print("❌ Incorrect password")
             raise HTTPException(status_code=401, detail="Invalid email or password")
 
         # ✅ Generate JWT Token
         token = create_jwt_token({"email": user.email, "username": user_record["username"]})
-        
+
+        print("✅ Login successful, returning token")
         return {"token": token, "username": user_record["username"]}
 
     except Exception as e:
+        print(f"❌ Error during login: {e}")
         raise HTTPException(status_code=500, detail=f"Error logging in: {str(e)}")
