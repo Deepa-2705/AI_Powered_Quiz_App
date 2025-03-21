@@ -38,12 +38,12 @@ export const Intro = ({ onGetStartedClick }: IntroProps) => {
         </div>
       </div>
 
-      <Button
+      {/* <Button
         className="w-full z-10"
         block
         size={"small"}
         onClick={onGetStartedClick}
-      >{`Let's Get Started`}</Button>
+      >{`Let's Get Started`}</Button> */}
     </div>
   );
 };

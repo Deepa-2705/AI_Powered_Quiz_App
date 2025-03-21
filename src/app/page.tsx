@@ -45,7 +45,7 @@ export default function Home() {
   };
 
   return (
-    <main className="h-viewport flex flex-col w-full overflow-hidden">
+    <main className="h-viewport flex flex-col w-full overflow-hidden bg-[url('/path-to-background-image.png')] bg-cover bg-center">
       {/* 🔹 Logout Button at the top */}
       <div className="flex justify-between items-center p-4">
         <h1 className="text-lg font-bold">Welcome to the Quiz App</h1>
@@ -55,7 +55,33 @@ export default function Home() {
       </div>
 
       <AnimatePresence mode="wait">
-        {displayView === "intro" && <Intro onGetStartedClick={() => setDisplayView("subjectSelect")} />}
+        {displayView === "intro" && (
+          <div className="flex flex-col items-center">
+            {/* ✅ Keeping Intro.tsx (without the "Let's Get Started" button) */}
+            <Intro onGetStartedClick={() => {}} />  {/* 🔹 Fixed missing prop error */}
+
+            {/* 🔹 Two Navigation Options */}
+            <div className="mt-6 flex flex-col gap-4 text-center">
+              {/* ✅ Attempt Without Test Code -> Navigates to Subject Selector */}
+              <button
+                onClick={() => setDisplayView("subjectSelect")}
+                className="bg-blue-500 text-white px-6 py-3 rounded-lg text-lg font-semibold shadow-md"
+              >
+                Attempt Without Test Code
+              </button>
+
+              {/* ✅ Link to Attempt Using Test Code */}
+              <a
+                href="/test-code"
+                className="text-blue-600 text-lg font-semibold underline hover:text-blue-800"
+              >
+                Attempt Using Test Code
+              </a>
+            </div>
+          </div>
+        )}
+
+        {/* ✅ Navigates to Subject Select when "Attempt Without Test Code" is clicked */}
         {displayView === "subjectSelect" && <SubjectSelect onStartQuiz={onStartQuiz} />}
         {displayView === "countdown" && <Countdown onGoClick={() => setDisplayView("quiz")} />}
         {displayView === "quiz" && <Quiz selectedSubject={selectedSubject} selectedLevel={selectedLevel} />}

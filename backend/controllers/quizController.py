@@ -2,6 +2,7 @@ import os
 import httpx
 import json
 import re
+import random  # ✅ Import for shuffling
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 from dotenv import load_dotenv
@@ -22,7 +23,7 @@ class QuizRequest(BaseModel):
 @router.post("/generate")
 async def generate_quiz(request: QuizRequest):
     """
-    Calls Gemini API to generate structured quiz questions.
+    Calls Gemini API to generate structured quiz questions with shuffled answer choices.
     """
     if not GEMINI_API_KEY:
         raise HTTPException(status_code=500, detail="Gemini API key is missing.")
@@ -78,10 +79,31 @@ async def generate_quiz(request: QuizRequest):
         if not isinstance(quiz_data, list):
             raise HTTPException(status_code=500, detail="Gemini response is not a valid quiz format.")
 
-        return quiz_data  # ✅ Return JSON directly
+        # ✅ Shuffle answer choices for each question
+        shuffled_quiz = [shuffle_options(q) for q in quiz_data]
+
+        return shuffled_quiz  # ✅ Return shuffled questions
 
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error generating quiz: {str(e)}")
+
+
+def shuffle_options(question_data):
+    """
+    Takes a dictionary with 'options' and 'correctAnswer' and shuffles the options.
+    Ensures correctAnswer is placed randomly.
+    """
+    options = question_data["options"]
+    correct_answer = question_data["correctAnswer"]
+
+    # ✅ Shuffle options while keeping track of the correct answer
+    random.shuffle(options)
+
+    return {
+        "question": question_data["question"],
+        "options": options,
+        "correctAnswer": correct_answer  # ✅ Correct answer remains the same
+    }
 
 
 def parse_quiz_text(text):
@@ -96,6 +118,10 @@ def parse_quiz_text(text):
         if len(lines) >= 5:  # Ensure at least 1 question + 4 options
             question = lines[0].strip()
             options = [re.sub(r"^[a-dA-D]\)", "", opt).strip() for opt in lines[1:5]]
+            
+            # ✅ Shuffle options before storing them
+            random.shuffle(options)
+
             correct_answer = options[-1]  # Assume last option is correct (can be adjusted)
 
             questions.append({
