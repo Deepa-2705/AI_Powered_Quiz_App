@@ -1,6 +1,6 @@
 "use client";
-import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { AnimatePresence } from "framer-motion";
 import { Countdown } from "@/ui/components/Countdown";
 import { Intro } from "@/ui/components/Intro";
@@ -11,10 +11,14 @@ export default function Home() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [displayView, setDisplayView] = useState<"intro" | "subjectSelect" | "countdown" | "quiz">("intro");
   const [selectedSubject, setSelectedSubject] = useState<string>("");
+  const [selectedTopic, setSelectedTopic] = useState<string>("");
   const [selectedLevel, setSelectedLevel] = useState<string>("");
+  const searchParams = useSearchParams();
+  const testCode = searchParams.get("testCode") || ""; // ✅ Read test code from URL
   const router = useRouter();
 
-  useEffect(() => {
+  // 🔹 Authentication Check
+  useState(() => {
     if (typeof window !== "undefined") {
       const token = localStorage.getItem("token");
       console.log("🔹 Checking authentication, Token:", token);
@@ -26,7 +30,7 @@ export default function Home() {
         setIsAuthenticated(true);
       }
     }
-  }, []);
+  });
 
   if (!isAuthenticated) {
     return null; // ✅ Prevent flashing home page before redirect
@@ -38,8 +42,10 @@ export default function Home() {
     router.push("/login"); // ✅ Redirect to login after logout
   };
 
-  const onStartQuiz = (subject: string, level: string) => {
+  // ✅ Function to handle quiz start
+  const handleStartQuiz = (subject: string, topic: string, level: string) => {
     setSelectedSubject(subject);
+    setSelectedTopic(topic);
     setSelectedLevel(level);
     setDisplayView("countdown");
   };
@@ -58,7 +64,7 @@ export default function Home() {
         {displayView === "intro" && (
           <div className="flex flex-col items-center">
             {/* ✅ Keeping Intro.tsx (without the "Let's Get Started" button) */}
-            <Intro onGetStartedClick={() => {}} />  {/* 🔹 Fixed missing prop error */}
+            <Intro onGetStartedClick={() => {}} /> {/* 🔹 Fixed missing prop error */}
 
             {/* 🔹 Two Navigation Options */}
             <div className="mt-6 flex flex-col gap-4 text-center">
@@ -82,9 +88,11 @@ export default function Home() {
         )}
 
         {/* ✅ Navigates to Subject Select when "Attempt Without Test Code" is clicked */}
-        {displayView === "subjectSelect" && <SubjectSelect onStartQuiz={onStartQuiz} />}
+        {displayView === "subjectSelect" && <SubjectSelect testCode={testCode} onStartQuiz={handleStartQuiz} />}
         {displayView === "countdown" && <Countdown onGoClick={() => setDisplayView("quiz")} />}
-        {displayView === "quiz" && <Quiz selectedSubject={selectedSubject} selectedLevel={selectedLevel} />}
+        {displayView === "quiz" && (
+          <Quiz selectedSubject={selectedSubject} selectedTopic={selectedTopic} selectedLevel={selectedLevel} />
+        )}
       </AnimatePresence>
     </main>
   );

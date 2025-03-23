@@ -1,11 +1,10 @@
 "use client";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
-import { useRouter } from "next/navigation";
 import { Button } from "./Button";
 import { fetchQuizQuestions } from "../utils/fetchQuestions";
 
-// Subjects and their respective topics
+// Subjects and Topics Mapping
 const subjectsWithTopics: { [key: string]: string[] } = {
   Mathematics: ["Algebra", "Geometry", "Calculus"],
   Science: ["Physics", "Biology", "Chemistry"],
@@ -16,15 +15,33 @@ const subjectsWithTopics: { [key: string]: string[] } = {
 
 const levels = ["Easy", "Medium", "Hard"];
 
-export const SubjectSelect = ({ onStartQuiz }: { onStartQuiz: (subject: string, topic: string, level: string) => void }) => {
+// Mock valid test codes (Replace with API validation if needed)
+const validTestCodes = ["TEST123", "QUIZ456", "STUDENT789"];
+
+// ✅ Add `onStartQuiz` to the prop types
+interface SubjectSelectProps {
+  testCode?: string;
+  onStartQuiz: (subject: string, topic: string, level: string) => void;
+}
+
+export const SubjectSelect = ({ testCode, onStartQuiz }: SubjectSelectProps) => {
   const [selectedSubject, setSelectedSubject] = useState("");
   const [selectedTopic, setSelectedTopic] = useState("");
   const [selectedLevel, setSelectedLevel] = useState("");
   const [loading, setLoading] = useState(false);
-  const router = useRouter();
+  const [isValidTestCode, setIsValidTestCode] = useState<boolean>(true);
+
+  // ✅ Validate Test Code
+  useEffect(() => {
+    if (testCode) {
+      setIsValidTestCode(validTestCodes.includes(testCode));
+    } else {
+      setIsValidTestCode(true); // ✅ Allow normal quiz flow when no test code
+    }
+  }, [testCode]);
 
   const handleContinue = async () => {
-    if (!selectedSubject || !selectedTopic || !selectedLevel) return;
+    if (!selectedSubject || !selectedTopic || !selectedLevel || (testCode && !isValidTestCode)) return;
     setLoading(true);
 
     try {
@@ -51,6 +68,13 @@ export const SubjectSelect = ({ onStartQuiz }: { onStartQuiz: (subject: string, 
         Select Subject, Topic, and Level
       </h1>
 
+      {/* ✅ Display Test Code Validation */}
+      {testCode && (
+        <p className={`text-center text-sm ${isValidTestCode ? "text-green-600" : "text-red-500"}`}>
+          {isValidTestCode ? `✔ Test Code Verified: ${testCode}` : "❌ Invalid Test Code"}
+        </p>
+      )}
+
       <div className="flex flex-col flex-1 space-y-4">
         {/* Subject Selection */}
         <div>
@@ -62,6 +86,7 @@ export const SubjectSelect = ({ onStartQuiz }: { onStartQuiz: (subject: string, 
               setSelectedTopic(""); // Reset topic when subject changes
             }}
             className="w-full p-2 border rounded-lg"
+            disabled={testCode ? !isValidTestCode : false} // ✅ Fix: Proper boolean check
           >
             <option value="">Select Subject</option>
             {Object.keys(subjectsWithTopics).map((subject) => (
@@ -80,6 +105,7 @@ export const SubjectSelect = ({ onStartQuiz }: { onStartQuiz: (subject: string, 
               value={selectedTopic}
               onChange={(e) => setSelectedTopic(e.target.value)}
               className="w-full p-2 border rounded-lg"
+              disabled={testCode ? !isValidTestCode : false} // ✅ Fix: Proper boolean check
             >
               <option value="">Select Topic</option>
               {subjectsWithTopics[selectedSubject].map((topic) => (
@@ -102,6 +128,7 @@ export const SubjectSelect = ({ onStartQuiz }: { onStartQuiz: (subject: string, 
                 className={`py-2 px-3 rounded-lg border text-sm ${
                   selectedLevel === level ? "border-brand-cerulean-blue bg-brand-cerulean-blue/10" : "border-gray-300"
                 }`}
+                disabled={testCode ? !isValidTestCode : false} // ✅ Fix: Proper boolean check
               >
                 {level}
               </button>
@@ -110,9 +137,14 @@ export const SubjectSelect = ({ onStartQuiz }: { onStartQuiz: (subject: string, 
         </div>
       </div>
 
-      {/* Continue Button - Sticky at the Bottom */}
+      {/* Continue Button */}
       <div className="sticky bottom-0 bg-white p-3 border-t">
-        <Button block size="small" disabled={!selectedSubject || !selectedTopic || !selectedLevel || loading} onClick={handleContinue}>
+        <Button
+          block
+          size="small"
+          disabled={!selectedSubject || !selectedTopic || !selectedLevel || loading || (testCode ? !isValidTestCode : false)}
+          onClick={handleContinue}
+        >
           {loading ? "Loading..." : "Continue"}
         </Button>
       </div>

@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef } from "react";
 import { motion } from "framer-motion";
-import axios from "axios"; // ✅ Ensure axios is imported
+import axios from "axios";
 import { Button } from "@/ui/components/Button";
 import { OptionList } from "./OptionList";
 import { formatTime } from "../utils/formatTime";
@@ -18,6 +18,7 @@ import {
 // Define props type
 interface QuizProps {
   selectedSubject: string;
+  selectedTopic: string;
   selectedLevel: string;
 }
 
@@ -27,8 +28,8 @@ export const Quiz = ({ selectedSubject, selectedLevel }: QuizProps) => {
   const router = useRouter();
   const timerRef = useRef<NodeJS.Timeout | null>(null);
 
-  // ✅ Corrected state variable for questions
   const [quizQuestions, setQuizQuestions] = useState<QuizQuestion[]>([]);
+  const [shuffledQuestions, setShuffledQuestions] = useState<QuizQuestion[]>([]);
   const [timePassed, setTimePassed] = useState(0);
   const [activeQuestion, setActiveQuestion] = useState(0);
   const [selectedAnswerIndex, setSelectedAnswerIndex] = useState(-1);
@@ -44,9 +45,11 @@ export const Quiz = ({ selectedSubject, selectedLevel }: QuizProps) => {
   useEffect(() => {
     const storedQuestions = localStorage.getItem("quizQuestions");
     if (storedQuestions) {
-      setQuizQuestions(JSON.parse(storedQuestions));
+      const parsedQuestions: QuizQuestion[] = JSON.parse(storedQuestions);
+      setQuizQuestions(parsedQuestions);
+      setShuffledQuestions(shuffleOptions(parsedQuestions));
     } else {
-      fetchQuestions(); // ✅ Fetch from API if not stored
+      fetchQuestions();
     }
   }, []);
 
@@ -54,7 +57,7 @@ export const Quiz = ({ selectedSubject, selectedLevel }: QuizProps) => {
   useEffect(() => {
     const token = localStorage.getItem("token");
     if (!token) {
-      router.push("/login"); // Redirects to login page if not logged in
+      router.push("/login");
     }
   }, []);
 
@@ -65,21 +68,34 @@ export const Quiz = ({ selectedSubject, selectedLevel }: QuizProps) => {
         topic: selectedSubject,
         difficulty: selectedLevel,
       });
-  
-      console.log("🔹 API Response:", response.data); // ✅ Debugging
-  
+
+      console.log("🔹 API Response:", response.data);
+
       if (!response.data || response.data.length === 0) {
         console.warn("⚠ No questions received from API!");
         return;
       }
-  
-      setQuizQuestions(response.data); // ✅ Save questions to state
-      localStorage.setItem("quizQuestions", JSON.stringify(response.data)); // ✅ Store for later use
+
+      const shuffled = shuffleOptions(response.data);
+      setQuizQuestions(response.data);
+      setShuffledQuestions(shuffled);
+      localStorage.setItem("quizQuestions", JSON.stringify(response.data));
     } catch (error) {
       console.error("❌ Error fetching quiz questions:", error);
     }
   };
-  
+
+  // ✅ Function to shuffle options for each question
+  const shuffleOptions = (questions: QuizQuestion[]) => {
+    return questions.map((question) => {
+      const shuffledOptions = [...question.options].sort(() => Math.random() - 0.5);
+      return {
+        ...question,
+        options: shuffledOptions,
+        correctAnswer: question.correctAnswer, // Keep the correct answer unchanged
+      };
+    });
+  };
 
   const setupTimer = () => {
     if (timerRef.current) clearInterval(timerRef.current);
@@ -112,7 +128,7 @@ export const Quiz = ({ selectedSubject, selectedLevel }: QuizProps) => {
 
   const handleNextQuestion = () => {
     setSelectedAnswerIndex(-1);
-    if (activeQuestion + 1 < quizQuestions.length) {
+    if (activeQuestion + 1 < shuffledQuestions.length) {
       setActiveQuestion((prev) => prev + 1);
       setTimePassed(0); // Reset timer
       setupTimer();
@@ -125,8 +141,8 @@ export const Quiz = ({ selectedSubject, selectedLevel }: QuizProps) => {
   const handleSelectAnswer = (answerIndex: number) => {
     clearInterval(timerRef.current!);
     setSelectedAnswerIndex(answerIndex);
-    const correctAnswer = quizQuestions[activeQuestion]?.correctAnswer;
-    const selectedAnswer = quizQuestions[activeQuestion]?.options[answerIndex];
+    const correctAnswer = shuffledQuestions[activeQuestion]?.correctAnswer;
+    const selectedAnswer = shuffledQuestions[activeQuestion]?.options[answerIndex];
 
     if (correctAnswer === selectedAnswer) {
       playCorrectAnswer();
@@ -148,14 +164,14 @@ export const Quiz = ({ selectedSubject, selectedLevel }: QuizProps) => {
   };
 
   if (quizFinished) {
-    return <Result results={results} totalQuestions={quizQuestions.length} />;
+    return <Result results={results} totalQuestions={shuffledQuestions.length} />;
   }
 
-  if (quizQuestions.length === 0 || !quizQuestions[activeQuestion]) {
+  if (shuffledQuestions.length === 0 || !shuffledQuestions[activeQuestion]) {
     return <p>Loading questions...</p>;
   }
 
-  const { question, options } = quizQuestions[activeQuestion];
+  const { question, options } = shuffledQuestions[activeQuestion];
 
   return (
     <motion.div
@@ -177,7 +193,7 @@ export const Quiz = ({ selectedSubject, selectedLevel }: QuizProps) => {
 
         <div className="mt-6 rounded-2xl border border-brand-light-gray px-7 py-4 w-full mb-1">
           <h3 className="text-black font-medium text-sm">
-            Question {activeQuestion + 1} / {quizQuestions.length}
+            Question {activeQuestion + 1} / {shuffledQuestions.length}
           </h3>
           <h4 className="text-brand-midnight font-medium text-base mt-[34px]">
             {question}
@@ -185,7 +201,7 @@ export const Quiz = ({ selectedSubject, selectedLevel }: QuizProps) => {
         </div>
 
         <OptionList
-          activeQuestion={quizQuestions[activeQuestion]}
+          activeQuestion={shuffledQuestions[activeQuestion]}
           options={options}
           selectedAnswerIndex={selectedAnswerIndex}
           onAnswerSelected={handleSelectAnswer}

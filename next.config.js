@@ -9,6 +9,11 @@ const nextConfig = {
       styledComponents: true, // Enables better styling if using styled-components
     },
   };
+
+  module.exports = {
+    reactStrictMode: false, // Temporarily disable strict mode
+  };
+  
   
   module.exports = nextConfig;
   
